@@ -843,6 +843,10 @@ Details:
 | course section name | String | Yes |  |  |  |  |
 | Start and end date of the course section |  | Yes |  |  |  |  |
 | Rubric used |  | Yes |  |  |  |  |
+| WAR weekly due day | Day of week | Yes | Required |  Moves the WAR deadline of every week (BR-war-deadline), including the lateness shown for past weeks (UC-WAR-section-submission-status), and the day of the weekly reminder (FR-NOT-weekly-reminder) | The lateness of past weekly activity reports will be recalculated against the new deadline. | weekly activity report |
+| WAR due time | Time (HH:mm) | Yes | Required |  Moves the WAR deadline of every week (BR-war-deadline), including the lateness shown for past weeks (UC-WAR-section-submission-status) | The lateness of past weekly activity reports will be recalculated against the new deadline. | weekly activity report |
+| Peer evaluation weekly due day | Day of week | Yes | Required | Changes the day of the weekly reminder (FR-NOT-weekly-reminder) |  | peer evaluation |
+| Peer evaluation due time | Time (HH:mm) | Yes | Required | Changes the due time listed in the weekly reminder (FR-NOT-weekly-reminder) |  | peer evaluation |
 
 The course admin shall be able to cancel the use case at any time prior to submitting it.
 
@@ -2179,6 +2183,81 @@ Report generating algorithm: N/A
 
 **Related Use Cases:**
 **Assumptions:**
+**Open Issues:**
+
+### **UC-WAR-section-submission-status: The instructor views the WAR submission status of a course section**
+
+**UC ID and Name:** UC-WAR-section-submission-status: View the WAR submission status of a course section
+**Created By:** Cabdifataax Maxamuud
+**Date Created:** 2026-10-02
+**Primary Actor:** instructor
+**Secondary Actors:**
+**Trigger:** The instructor indicates to view the WAR submission status of a course section.
+**Description:** The instructor wants to see, for one active week, which students in her course section submitted their weekly activity report on time, which submitted late and by how much, and which have not submitted, so that she can follow up with the students who are behind.
+
+**Preconditions:**
+- PRE-1. The instructor is logged into the system.
+- PRE-2. The instructor is assigned to at least one course section.
+
+**Postconditions:**
+- POST-1. The submission status of every expected student for the selected week is displayed to the instructor. No data is changed.
+
+**Main Success Scenario:**
+1. The instructor indicates to view the WAR submission status of a course section.
+2. The system asks the instructor to provide the parameters defined in "Submission status parameters" in the Associated Information of this use case, prefilled with their defaults.
+3. The instructor enters the parameters and confirms.
+4. The system validates the parameters according to "Submission status parameters" defined in the Associated Information of this use case.
+5. The system determines the expected students, each student's submission time, the week's deadline, and each student's status and lateness according to "Submission status algorithm" defined in the Associated Information of this use case.
+6. The system displays the week, its deadline, and one row per expected student according to "Submission status display" defined in the Associated Information of this use case.
+7. Use case ends.
+
+**Extensions:**
+- **4a. The selected week is not one of the course section's active weeks:**
+  - 4a1. The system informs the instructor that only an active week of the course section can be selected (BR-active-weeks).
+  - 4a2. The instructor selects another week and returns to step 4 of the normal flow.
+- **5a. The selected week's deadline has not passed yet:**
+  - 5a1. The system shows a student with no submission time for the week as "Not yet submitted" instead of "Not submitted", and shows the deadline as upcoming. The use case continues at step 6 of the normal flow.
+- **5b. The course section has no expected students:**
+  - 5b1. The system informs the instructor that no student in the course section is assigned to a team without being deactivated.
+  - 5b2. The instructor either returns to step 3 of the normal flow or chooses to terminate the use case.
+
+**Priority:** High
+**Frequency of Use:** Approximately 2 instructors, average of 1 usage per week each.
+**Business Rules:** BR-section-scoped-access, narrowed for this use case: the instructor, including a course admin, may view the status only for a course section she is assigned to; owning the course does not admit a course admin to a course section she is not assigned to. BR-role-based-access, BR-team-assignment-required (a student on no team cannot author a WAR, so she is not expected to submit one), BR-student-lifecycle (a deactivated student is not expected to submit), BR-active-weeks, BR-war-deadline.
+
+**Associated Information:**
+
+Submission status parameters:
+- Course section: a course section the instructor is assigned to (see the Business Rules field: a course admin must also be assigned). By default, her default course section.
+- Active week: one of the course section's active weeks, shown as its Monday–Sunday date range, e.g., "09-28-2026 to 10-04-2026". By default, the previous week.
+
+Submission status algorithm:
+- Expected students: every student in the course section who is not deactivated (BR-student-lifecycle) and is assigned to a team.
+- Reported activity: an activity of the student for the selected week whose actual hours are greater than zero. An activity with zero actual hours is a placeholder and does not count; an activity edited back to zero actual hours, or deleted, stops counting.
+- Submission time: among the student's activities for the selected week that are reported activities now, the earliest moment at which one of them became a reported activity, whether it was created with actual hours greater than zero or a later edit raised its actual hours above zero. A WAR is submitted once; activities added or edited after that moment do not change its submission time. A student with no reported activity for the selected week has no submission time.
+- Deadline: per BR-war-deadline.
+- Status: "On time" if the submission time is at or before the deadline; "Late" if the submission time is after the deadline; "Not submitted" if there is no submission time.
+- Lateness: the submission time minus the deadline, for "Late" rows only, shown in hours and minutes (e.g., "2h 05m"; lateness of more than a day stays in hours, e.g., "27h 30m").
+
+Submission status display:
+- Header: the course section name, the week's date range, and the deadline (e.g., "Due Mon 10-05-2026 11:59 PM CDT").
+- Columns to include: Student, Team, Status, Submitted at, Late by. See the example below.
+- Sorting criteria: by team name, then by student last name, in ascending order.
+- Pagination: Not needed.
+- Format: HTML.
+
+An example of the displayed submission status:
+
+Active week: 09-28-2026 to 10-04-2026 — Due Mon 10-05-2026 11:59 PM CDT
+
+| Student | Team | Status | Submitted at | Late by |
+| ---- | ---- | ---- | ---- | ---- |
+| John Smith | Team 1 | On time | 10-05-2026 9:12 PM |  |
+| Jane Doe | Team 1 | Late | 10-06-2026 2:04 AM | 2h 05m |
+| Tim Lee | Team 2 | Not submitted |  |  |
+
+**Related Use Cases:** UC-WAR-manage-activities (how a student records the activities of a WAR), UC-WAR-team-war-report (also shows who did not turn in the WAR, for a single team and without lateness), UC-SEC-setup-active-weeks (configures the active weeks), UC-SEC-edit-section (configures the WAR due day and due time).
+**Assumptions:** The WAR due day and due time in effect when the instructor views the status apply to past weeks too, so changing them later changes the lateness shown for past weeks.
 **Open Issues:**
 
 ## **Peer Evaluation**
